@@ -1,0 +1,91 @@
+openapi: 3.0.3
+info:
+  title: Identitet Prenumeration API
+  version: 0.0.1
+  description: |
+    API för prenumeration på förändringar i data kopplat till en identitet.
+
+    En prenumerant registrerar intresse för en eller flera identiteter och får en notifikation
+    via Kafka när data för någon av dessa identiteter har uppdaterats av en extern källa.
+
+paths:
+  /prenumerationer:
+    post:
+      tags: [PrenumerationController]
+      operationId: createPrenumeration
+      summary: Registrera en prenumeration på identitetsförändringar
+      description: |
+        Registrerar en prenumeration för en eller flera identiteter. När data för någon av
+        identiteterna förändras skickas ett `IdentitetUppdateradEvent` till det angivna `replyTo`-topic.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePrenumerationRequest'
+      responses:
+        '201':
+          description: Prenumeration registrerad
+        '400':
+          description: Ogiltig förfrågan
+
+  /prenumerationer/{prenumerationId}:
+    delete:
+      tags: [PrenumerationController]
+      operationId: deletePrenumeration
+      summary: Avregistrera en prenumeration
+      description: |
+        Avregistrerar en befintlig prenumeration. Inga fler `IdentitetUppdateradEvent` skickas
+        för det angivna `prenumerationId`.
+      parameters:
+        - name: prenumerationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID för prenumerationen som ska avregistreras
+      responses:
+        '204':
+          description: Prenumeration avregistrerad
+        '404':
+          description: Prenumeration hittades inte
+
+components:
+  schemas:
+    CreatePrenumerationRequest:
+      type: object
+      required:
+        - prenumerationId
+        - identiteter
+        - replyTo
+      properties:
+        prenumerationId:
+          type: string
+          format: uuid
+          description: Klient-valt ID som identifierar prenumerationen, t.ex. handlaggningId
+        identiteter:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Idtyp'
+          description: Lista över identiteter vars förändringar prenumeranten vill bevaka
+        replyTo:
+          type: string
+          description: Kafka-topic dit IdentitetUppdateradEvent skickas när en identitet förändras
+
+    Idtyp:
+      type: object
+      required:
+        - typId
+        - varde
+      properties:
+        typId:
+          type: string
+          description: Unikt ID som identifierar vilken typ av värde som anges
+        varde:
+          type: string
+          description: ID-värde som identifieras av typ
+      example:
+        typId: "4c34906c-03d9-425f-9a1a-062ef6eb88c7"
+        varde: "19901010-1234"
